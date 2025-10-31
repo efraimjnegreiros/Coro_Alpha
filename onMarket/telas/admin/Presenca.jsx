@@ -1,4 +1,3 @@
-// src/screens/RelatorioPresencasADM.js
 import { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -9,6 +8,7 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import axios from 'axios';
@@ -24,6 +24,10 @@ export default function RelatorioPresencasADM({ navigation }) {
   const [modalVisivel, setModalVisivel] = useState(false);
   const [ensaioSelecionado, setEnsaioSelecionado] = useState(null);
   const [presencasDoEnsaio, setPresencasDoEnsaio] = useState([]);
+
+  const [modalJustificativaVisivel, setModalJustificativaVisivel] = useState(false);
+  const [justificativaTexto, setJustificativaTexto] = useState('');
+  const [usuarioParaJustificar, setUsuarioParaJustificar] = useState(null);
 
   useEffect(() => {
     carregarDados();
@@ -42,7 +46,7 @@ export default function RelatorioPresencasADM({ navigation }) {
       setPresencas(resPresencas.data);
     } catch (error) {
       console.error(error);
-      Alert.alert('Erro', 'Não foi possível carregar os dados.');
+      alert('Erro', 'Não foi possível carregar os dados.');
     } finally {
       setCarregando(false);
     }
@@ -66,37 +70,48 @@ export default function RelatorioPresencasADM({ navigation }) {
           ...m,
           status: registro ? registro.status : 'ausencia',
           presencaId: registro ? registro.id : null,
+          justificativa: registro ? registro.justificativa : '',
         };
       });
       setPresencasDoEnsaio(lista);
       setModalVisivel(true);
     } catch (error) {
       console.error(error);
-      Alert.alert('Erro', 'Não foi possível carregar presenças do ensaio.');
+      alert('Erro', 'Não foi possível carregar presenças do ensaio.');
     }
   }
 
-  async function salvarPresenca(usuarioId, status) {
+  async function salvarPresenca(usuarioId, status, justificativa = null) {
     try {
       await axios.post(`https://coro-alpha.onrender.com/api/presencas`, {
         usuarioId,
         ensaioId: ensaioSelecionado.id,
         status,
+        justificativa,
       });
+
       setPresencasDoEnsaio(prev =>
-        prev.map(u => (u.id === usuarioId ? { ...u, status } : u))
+        prev.map(u =>
+          u.id === usuarioId ? { ...u, status, justificativa } : u
+        )
       );
-      Alert.alert('Presença salva', `Status "${status}" registrado com sucesso!`);
+
+      alert('✅ Sucesso', 'Status atualizado com sucesso!');
     } catch (error) {
       console.error(error);
-      Alert.alert('Erro', 'Falha ao salvar presença.');
+      alert('❌ Erro', 'Falha ao salvar presença.');
     }
   }
 
   function alterarStatus(usuarioId, novoStatus) {
-    setPresencasDoEnsaio(prev =>
-      prev.map(u => (u.id === usuarioId ? { ...u, status: novoStatus } : u))
-    );
+    if (novoStatus === 'falta_justificada') {
+      setUsuarioParaJustificar(usuarioId);
+      setModalJustificativaVisivel(true);
+    } else {
+      setPresencasDoEnsaio(prev =>
+        prev.map(u => (u.id === usuarioId ? { ...u, status: novoStatus } : u))
+      );
+    }
   }
 
   if (carregando) {
@@ -174,7 +189,15 @@ export default function RelatorioPresencasADM({ navigation }) {
           <ScrollView style={{ flex: 1 }}>
             {presencasDoEnsaio.map(u => (
               <View key={u.id} style={estilos.cardPresenca}>
-                <Text style={{ flex: 1 }}>{u.nome}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={estilos.nomeUsuario}>
+                    {u.nome}
+                    {u.status === 'falta_justificada' && u.justificativa
+                      ? ` - ${u.justificativa}`
+                      : ''}
+                  </Text>
+                </View>
+
                 <TouchableOpacity
                   style={[
                     estilos.botaoStatus,
@@ -184,6 +207,7 @@ export default function RelatorioPresencasADM({ navigation }) {
                 >
                   <Text style={estilos.textoBotao}>P</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     estilos.botaoStatus,
@@ -193,6 +217,7 @@ export default function RelatorioPresencasADM({ navigation }) {
                 >
                   <Text style={estilos.textoBotao}>F</Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[
                     estilos.botaoStatus,
@@ -205,7 +230,7 @@ export default function RelatorioPresencasADM({ navigation }) {
 
                 <TouchableOpacity
                   style={estilos.botaoSalvar}
-                  onPress={() => salvarPresenca(u.id, u.status)}
+                  onPress={() => salvarPresenca(u.id, u.status, u.justificativa)}
                 >
                   <Text style={estilos.textoSalvar}>Salvar</Text>
                 </TouchableOpacity>
@@ -220,6 +245,40 @@ export default function RelatorioPresencasADM({ navigation }) {
             <Text style={{ color: '#fff' }}>Fechar</Text>
           </TouchableOpacity>
         </SafeAreaView>
+      </Modal>
+
+      {/* Modal de Justificativa */}
+      <Modal visible={modalJustificativaVisivel} animationType="fade" transparent>
+        <View style={estilos.modalJustificativaFundo}>
+          <View style={estilos.modalJustificativa}>
+            <Text style={estilos.tituloJustificativa}>Digite a justificativa</Text>
+            <TextInput
+              style={estilos.inputJustificativa}
+              placeholder="Escreva aqui..."
+              value={justificativaTexto}
+              onChangeText={setJustificativaTexto}
+              multiline
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <TouchableOpacity
+                style={[estilos.botaoSalvar, { flex: 1, marginRight: 5 }]}
+                onPress={() => {
+                  salvarPresenca(usuarioParaJustificar, 'falta_justificada', justificativaTexto);
+                  setJustificativaTexto('');
+                  setModalJustificativaVisivel(false);
+                }}
+              >
+                <Text style={estilos.textoSalvar}>Salvar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[estilos.botaoFechar, { flex: 1, marginLeft: 5 }]}
+                onPress={() => setModalJustificativaVisivel(false)}
+              >
+                <Text style={{ color: '#fff' }}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       <MenuInferiorADM navigation={navigation} />
@@ -285,6 +344,10 @@ const estilos = StyleSheet.create({
     marginVertical: 4,
     borderRadius: 8,
   },
+  nomeUsuario: {
+    fontWeight: '600',
+    color: '#333',
+  },
   botaoStatus: {
     width: 30,
     height: 30,
@@ -301,12 +364,40 @@ const estilos = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 5,
   },
-  textoSalvar: { color: '#fff', fontWeight: 'bold' },
+  textoSalvar: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
   botaoFechar: {
     backgroundColor: '#2F7F6E',
     padding: 15,
     alignItems: 'center',
     borderRadius: 10,
     marginTop: 10,
+  },
+  modalJustificativaFundo: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalJustificativa: {
+    width: '85%',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+  },
+  tituloJustificativa: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2F7F6E',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  inputJustificativa: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginBottom: 10,
   },
 });
