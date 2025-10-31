@@ -15,7 +15,7 @@ app.use('/api/presencas', presencasRouter);
 
 
 // Sincronizar banco e iniciar servidor
-sequelize.sync({ alter: true, force: true })
+sequelize.sync({ alter: true })
   .then(() => {
     console.log('Banco sincronizado');
     app.listen(3000, () => {
