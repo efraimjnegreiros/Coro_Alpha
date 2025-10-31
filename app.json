@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Coro Alha",
+    "slug": "Coro Alpha",
+    "platforms": ["ios", "android", "web"],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./image/coroAlpha.png",
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./image/coroAlpha.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "favicon": "./image/coroAlpha.png",
+      "build": {
+        "pwa": true
+      }
+    },
+    "plugins": [
+      "expo-video"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6126ea1a-3307-4f2e-b540-a14afadc60a5"
+      }
+    }
+  }
+}
