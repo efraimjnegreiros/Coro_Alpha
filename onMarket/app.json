@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "OnMarket",
+    "slug": "onmarket",
+    "platforms": ["ios", "android", "web"],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./image/onMarket_Logo.png",
+
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./image/onMarket_Logo.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "build": {
+        "pwa": true
+      }
+    },
+    "plugins": [
+      "expo-video"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "6126ea1a-3307-4f2e-b540-a14afadc60a5"
+      }
+    }
+  }
+}
