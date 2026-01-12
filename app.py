@@ -90,4 +90,3 @@ if membro_selecionado:
 
 st.markdown("---")
 st.markdown("✅ Cada ponto no gráfico representa um ensaio. 1 = presença, 0 = falta.")
-app_streamlit_presencas.py
