@@ -1,3 +1,96 @@
+# # app_streamlit_presencas.py
+# import streamlit as st
+# import pandas as pd
+# import requests
+# import matplotlib.pyplot as plt
+
+# st.set_page_config(page_title="Controle de Presenças do Coro", layout="wide")
+
+# st.title("📊 Presenças do Coro")
+
+# # URLs da sua API
+# USUARIOS_URL = "https://coro-alpha.onrender.com/api/usuarios"
+# PRESENCAS_URL = "https://coro-alpha.onrender.com/api/presencas"
+
+# # 1️⃣ Buscar dados da API
+# usuarios = requests.get(USUARIOS_URL).json()
+# presencas = requests.get(PRESENCAS_URL).json()
+
+# # 2️⃣ Transformar em DataFrames
+# df_usuarios = pd.DataFrame(usuarios)
+# df_presencas = pd.DataFrame(presencas)
+
+# # Expandir os dados do usuário e do ensaio dentro das presenças
+# df_presencas["usuario_nome"] = df_presencas["Usuario"].apply(lambda x: x["nome"] if x else None)
+# df_presencas["ensaio_data"] = pd.to_datetime(df_presencas["Ensaio"].apply(lambda x: x["data"] if x else None))
+
+# # 3️⃣ Filtrar apenas membros
+# df_membros = df_usuarios[df_usuarios["tipo"] == "membro"]
+
+# # 4️⃣ Criar coluna de status simplificado: P = presença, F = ausência/falta_justificada
+# df_presencas["status_simples"] = df_presencas["status"].apply(lambda s: "P" if s=="presenca" else "F")
+
+# # 5️⃣ Ordenar por usuário e data
+# df_presencas = df_presencas.sort_values(by=["usuario_nome", "ensaio_data"])
+
+# # 6️⃣ Função para transformar sequência em blocos de texto
+# def blocos_sequencia_texto(seq):
+#     if not seq:
+#         return []
+#     resultado = []
+#     count = 1
+#     for i in range(1, len(seq)):
+#         if seq[i] == seq[i-1]:
+#             count += 1
+#         else:
+#             texto = f"{count} {'presença' if seq[i-1]=='P' else 'faltas'} consecutivas"
+#             resultado.append(texto)
+#             count = 1
+#     texto = f"{count} {'presença' if seq[-1]=='P' else 'faltas'} consecutivas"
+#     resultado.append(texto)
+#     return resultado
+
+# # 7️⃣ Criar sequência completa por usuário
+# sequencias = df_presencas.groupby("usuario_nome")["status_simples"].apply(lambda x: "".join(x)).reset_index()
+# sequencias["blocos"] = sequencias["status_simples"].apply(blocos_sequencia_texto)
+
+# # 8️⃣ Adicionar membros sem registros
+# sequencias = pd.merge(
+#     df_membros[["nome"]],
+#     sequencias,
+#     left_on="nome",
+#     right_on="usuario_nome",
+#     how="left"
+# )
+# sequencias["status_simples"] = sequencias["status_simples"].fillna("Sem registros")
+# sequencias["blocos"] = sequencias["blocos"].apply(lambda x: x if isinstance(x, list) else [])
+# sequencias["ultimo_consecutivo"] = sequencias["blocos"].apply(lambda x: x[-1] if x else "Sem registros")
+
+# # 9️⃣ Mostrar tabela
+# st.subheader("📋 Sequência de Presenças")
+# st.dataframe(sequencias[["nome","status_simples","blocos","ultimo_consecutivo"]])
+
+# # 1️⃣0️⃣ Seletor de membro para gráfico
+# membro_selecionado = st.selectbox("Escolha um membro para ver o gráfico de presenças:", sequencias["nome"].tolist())
+
+# if membro_selecionado:
+#     df_membro = df_presencas[df_presencas["usuario_nome"] == membro_selecionado].sort_values(by="ensaio_data")
+#     df_membro["valor"] = df_membro["status_simples"].apply(lambda x: 1 if x=="P" else 0)
+
+#     st.subheader(f"📈 Gráfico de Presenças: {membro_selecionado}")
+#     fig, ax = plt.subplots(figsize=(10,4))
+#     ax.plot(df_membro["ensaio_data"], df_membro["valor"], marker='o', linestyle='-', color='green')
+#     ax.set_ylim(-0.1, 1.1)
+#     ax.set_yticks([0,1])
+#     ax.set_yticklabels(["Falta", "Presença"])
+#     ax.set_xlabel("Data do Ensaio")
+#     ax.set_ylabel("Status")
+#     ax.grid(True)
+#     st.pyplot(fig)
+
+# st.markdown("---")
+# st.markdown("✅ Cada ponto no gráfico representa um ensaio. 1 = presença, 0 = falta.")
+
 # app_streamlit_presencas.py
 import streamlit as st
 import pandas as pd
@@ -5,35 +98,55 @@ import requests
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Controle de Presenças do Coro", layout="wide")
-
 st.title("📊 Presenças do Coro")
 
-# URLs da sua API
+# ===============================
+# URLs da API
+# ===============================
 USUARIOS_URL = "https://coro-alpha.onrender.com/api/usuarios"
 PRESENCAS_URL = "https://coro-alpha.onrender.com/api/presencas"
 
-# 1️⃣ Buscar dados da API
+# ===============================
+# Buscar dados da API
+# ===============================
 usuarios = requests.get(USUARIOS_URL).json()
 presencas = requests.get(PRESENCAS_URL).json()
 
-# 2️⃣ Transformar em DataFrames
 df_usuarios = pd.DataFrame(usuarios)
 df_presencas = pd.DataFrame(presencas)
 
-# Expandir os dados do usuário e do ensaio dentro das presenças
-df_presencas["usuario_nome"] = df_presencas["Usuario"].apply(lambda x: x["nome"] if x else None)
-df_presencas["ensaio_data"] = pd.to_datetime(df_presencas["Ensaio"].apply(lambda x: x["data"] if x else None))
+# ===============================
+# Expandir dados aninhados
+# ===============================
+df_presencas["usuario_nome"] = df_presencas["Usuario"].apply(
+    lambda x: x["nome"] if isinstance(x, dict) else None
+)
 
-# 3️⃣ Filtrar apenas membros
+df_presencas["ensaio_data"] = pd.to_datetime(
+    df_presencas["Ensaio"].apply(lambda x: x["data"] if isinstance(x, dict) else None)
+)
+
+df_presencas["ensaio_id"] = df_presencas["Ensaio"].apply(
+    lambda x: x["id"] if isinstance(x, dict) else None
+)
+
+# ===============================
+# Filtrar membros
+# ===============================
 df_membros = df_usuarios[df_usuarios["tipo"] == "membro"]
 
-# 4️⃣ Criar coluna de status simplificado: P = presença, F = ausência/falta_justificada
-df_presencas["status_simples"] = df_presencas["status"].apply(lambda s: "P" if s=="presenca" else "F")
+# ===============================
+# Status simplificado
+# ===============================
+df_presencas["status_simples"] = df_presencas["status"].apply(
+    lambda s: "P" if s == "presenca" else "F"
+)
 
-# 5️⃣ Ordenar por usuário e data
 df_presencas = df_presencas.sort_values(by=["usuario_nome", "ensaio_data"])
 
-# 6️⃣ Função para transformar sequência em blocos de texto
+# ===============================
+# Função blocos consecutivos
+# ===============================
 def blocos_sequencia_texto(seq):
     if not seq:
         return []
@@ -43,18 +156,27 @@ def blocos_sequencia_texto(seq):
         if seq[i] == seq[i-1]:
             count += 1
         else:
-            texto = f"{count} {'presença' if seq[i-1]=='P' else 'faltas'} consecutivas"
-            resultado.append(texto)
+            resultado.append(
+                f"{count} {'presença' if seq[i-1]=='P' else 'faltas'} consecutivas"
+            )
             count = 1
-    texto = f"{count} {'presença' if seq[-1]=='P' else 'faltas'} consecutivas"
-    resultado.append(texto)
+    resultado.append(
+        f"{count} {'presença' if seq[-1]=='P' else 'faltas'} consecutivas"
+    )
     return resultado
 
-# 7️⃣ Criar sequência completa por usuário
-sequencias = df_presencas.groupby("usuario_nome")["status_simples"].apply(lambda x: "".join(x)).reset_index()
+# ===============================
+# Sequência por usuário
+# ===============================
+sequencias = (
+    df_presencas
+    .groupby("usuario_nome")["status_simples"]
+    .apply(lambda x: "".join(x))
+    .reset_index()
+)
+
 sequencias["blocos"] = sequencias["status_simples"].apply(blocos_sequencia_texto)
 
-# 8️⃣ Adicionar membros sem registros
 sequencias = pd.merge(
     df_membros[["nome"]],
     sequencias,
@@ -62,31 +184,98 @@ sequencias = pd.merge(
     right_on="usuario_nome",
     how="left"
 )
+
 sequencias["status_simples"] = sequencias["status_simples"].fillna("Sem registros")
 sequencias["blocos"] = sequencias["blocos"].apply(lambda x: x if isinstance(x, list) else [])
-sequencias["ultimo_consecutivo"] = sequencias["blocos"].apply(lambda x: x[-1] if x else "Sem registros")
+sequencias["ultimo_consecutivo"] = sequencias["blocos"].apply(
+    lambda x: x[-1] if x else "Sem registros"
+)
 
-# 9️⃣ Mostrar tabela
+# ===============================
+# TABELA
+# ===============================
 st.subheader("📋 Sequência de Presenças")
-st.dataframe(sequencias[["nome","status_simples","blocos","ultimo_consecutivo"]])
+st.dataframe(sequencias[["nome", "status_simples", "blocos", "ultimo_consecutivo"]])
 
-# 1️⃣0️⃣ Seletor de membro para gráfico
-membro_selecionado = st.selectbox("Escolha um membro para ver o gráfico de presenças:", sequencias["nome"].tolist())
+# =====================================================
+# 📈 1) GRÁFICO GERAL – ENSAIOS x STATUS
+# =====================================================
+st.subheader("📈 Presenças do Coro ao Longo do Tempo")
 
-if membro_selecionado:
-    df_membro = df_presencas[df_presencas["usuario_nome"] == membro_selecionado].sort_values(by="ensaio_data")
-    df_membro["valor"] = df_membro["status_simples"].apply(lambda x: 1 if x=="P" else 0)
+resumo_ensaio = (
+    df_presencas
+    .groupby(["ensaio_data", "status"])
+    .size()
+    .reset_index(name="quantidade")
+)
 
-    st.subheader(f"📈 Gráfico de Presenças: {membro_selecionado}")
-    fig, ax = plt.subplots(figsize=(10,4))
-    ax.plot(df_membro["ensaio_data"], df_membro["valor"], marker='o', linestyle='-', color='green')
-    ax.set_ylim(-0.1, 1.1)
-    ax.set_yticks([0,1])
-    ax.set_yticklabels(["Falta", "Presença"])
-    ax.set_xlabel("Data do Ensaio")
-    ax.set_ylabel("Status")
-    ax.grid(True)
-    st.pyplot(fig)
+fig1, ax1 = plt.subplots(figsize=(12, 5))
+
+for status, label in [
+    ("presenca", "Presenças"),
+    ("ausencia", "Ausências"),
+    ("falta_justificada", "Faltas Justificadas"),
+]:
+    df_plot = resumo_ensaio[resumo_ensaio["status"] == status]
+    ax1.plot(df_plot["ensaio_data"], df_plot["quantidade"], marker="o", label=label)
+
+ax1.set_xlabel("Data do Ensaio")
+ax1.set_ylabel("Quantidade")
+ax1.set_title("Presença do Coro por Ensaio")
+ax1.legend()
+ax1.grid(True)
+plt.xticks(rotation=45)
+
+st.pyplot(fig1)
+
+# =====================================================
+# 📊 2) GRÁFICO POR MEMBRO
+# =====================================================
+st.subheader("👤 Acompanhamento Individual do Membro")
+
+membro_sel = st.selectbox(
+    "Escolha um membro:",
+    sorted(df_presencas["usuario_nome"].dropna().unique())
+)
+
+df_membro = df_presencas[df_presencas["usuario_nome"] == membro_sel]
+df_membro["valor"] = df_membro["status_simples"].apply(lambda x: 1 if x == "P" else 0)
+
+fig2, ax2 = plt.subplots(figsize=(10, 4))
+ax2.plot(df_membro["ensaio_data"], df_membro["valor"], marker="o")
+ax2.set_ylim(-0.1, 1.1)
+ax2.set_yticks([0, 1])
+ax2.set_yticklabels(["Falta", "Presença"])
+ax2.set_title(f"Presenças de {membro_sel}")
+ax2.set_xlabel("Data do Ensaio")
+ax2.grid(True)
+plt.xticks(rotation=45)
+
+st.pyplot(fig2)
+
+# =====================================================
+# 📅 3) GRÁFICO POR ENSAIO
+# =====================================================
+st.subheader("📅 Análise de um Ensaio Específico")
+
+ensaio_sel = st.selectbox(
+    "Escolha a data do ensaio:",
+    sorted(df_presencas["ensaio_data"].dt.date.unique())
+)
+
+df_ensaio = df_presencas[df_presencas["ensaio_data"].dt.date == ensaio_sel]
+
+contagem = df_ensaio["status"].value_counts()
+
+fig3, ax3 = plt.subplots(figsize=(8, 4))
+ax3.plot(contagem.index, contagem.values, marker="o")
+ax3.set_title(f"Status do Ensaio – {ensaio_sel}")
+ax3.set_xlabel("Status")
+ax3.set_ylabel("Quantidade")
+ax3.grid(True)
+
+st.pyplot(fig3)
 
 st.markdown("---")
-st.markdown("✅ Cada ponto no gráfico representa um ensaio. 1 = presença, 0 = falta.")
+st.markdown("✅ Sistema completo de acompanhamento de presenças do coro.")
+
