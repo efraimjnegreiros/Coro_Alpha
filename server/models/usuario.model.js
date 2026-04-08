@@ -16,6 +16,11 @@ const Usuario = sequelize.define('Usuario', {
     ), 
     allowNull: false 
   },
+  imgComponente: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
+  },
 
   email: { type: DataTypes.STRING, allowNull: true, unique: true },
   senha: { type: DataTypes.STRING, allowNull: true },
